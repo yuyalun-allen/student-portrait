@@ -94,7 +94,7 @@ def plot_clusters(df):
 
     # 绘制层次聚类的树状图
     plt.figure(figsize=(10, 5))
-    dendrogram(Z)
+    dendrogram(Z, labels=df.index.tolist())
     plt.title('Hierarchical Clustering Dendrogram')
     plt.xlabel('Sample Index')
     plt.ylabel('Distance')
