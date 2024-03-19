@@ -60,7 +60,7 @@ def import_question_answers(path):
     return pd.concat(dataframes, ignore_index=True)
 
 
-# dim available values ["feature", "knowledge"].
+# dim available values ["feature", "knowledge", "week"].
 def assess_students(student_answers, question_answers, dim):
     full_df = pd.merge(left=student_answers,
                     right=question_answers,
@@ -73,7 +73,7 @@ def assess_students(student_answers, question_answers, dim):
         else:
             return False
 
-    answer_judgements = full_df.loc[:, ["title", "voter_id", "特征"]]
+    answer_judgements = full_df.loc[:, ["title", "voter_id", "特征", "week"]]
     answer_judgements["judgement"] = full_df.apply(judge, axis=1)
     answer_judgements['knowledge'] = answer_judgements['title'].str.split('-').str[1]
 
@@ -87,6 +87,11 @@ def assess_students(student_answers, question_answers, dim):
             .groupby(['voter_id', 'knowledge'])['judgement']\
             .agg(lambda x: x.mean() * 100)\
             .unstack(level="knowledge")
+    elif dim == "week":
+        assessment = answer_judgements\
+            .groupby(['voter_id', 'week'])['judgement']\
+            .agg(lambda x: x.mean() * 100)\
+            .unstack(level="week")
     assessment.fillna(0, inplace=True)
     assessment.to_csv(f"result/assessment-{dim}.csv")
     return assessment
@@ -96,17 +101,17 @@ def cluster_students(df, n_clusters):
     agg_cluster = AgglomerativeClustering(n_clusters=n_clusters)
     return agg_cluster.fit_predict(df)
 
-
-def plot_clusters(df):
+# dim available values ["feature", "knowledge"].
+def plot_clusters(df, dim):
     Z = linkage(df, method='ward')
 
     # 绘制层次聚类的树状图
     plt.figure(figsize=(10, 5))
     dendrogram(Z, labels=df.index.tolist())
-    plt.title('Hierarchical Clustering Dendrogram')
+    plt.title(f'Hierarchical Clustering Dendrogram: {dim}')
     plt.xlabel('Sample Index')
     plt.ylabel('Distance')
-    plt.savefig("result/cluster.png")
+    plt.savefig(f"result/cluster-{dim}.png")
 
 
 def import_table_to_pd(table_name):
@@ -179,5 +184,5 @@ def export_table_to_json(host, port, database,
 if __name__ == "__main__":
     student_answers = import_student_answer()
     question_answers = import_question_answers("QnA/")
-    assessment = assess_students(student_answers, question_answers, "knowledge")
-    plot_clusters(assessment)
+    assessment = assess_students(student_answers, question_answers, "week")
+    # plot_clusters(assessment, "knowledge")
