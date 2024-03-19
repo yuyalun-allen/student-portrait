@@ -60,7 +60,8 @@ def import_question_answers(path):
     return pd.concat(dataframes, ignore_index=True)
 
 
-def assess_students(student_answers, question_answers):
+# dim available values ["feature", "knowledge"].
+def assess_students(student_answers, question_answers, dim):
     full_df = pd.merge(left=student_answers,
                     right=question_answers,
                     left_on="title",
@@ -74,13 +75,20 @@ def assess_students(student_answers, question_answers):
 
     answer_judgements = full_df.loc[:, ["title", "voter_id", "特征"]]
     answer_judgements["judgement"] = full_df.apply(judge, axis=1)
+    answer_judgements['knowledge'] = answer_judgements['title'].str.split('-').str[1]
 
-    assessment = answer_judgements\
-        .groupby(['voter_id', '特征'])['judgement']\
-        .agg(lambda x: x.mean() * 100)\
-        .unstack(level="特征")
-    
-    assessment.to_csv("result/assessment.csv")
+    if dim == "feature":
+        assessment = answer_judgements\
+            .groupby(['voter_id', '特征'])['judgement']\
+            .agg(lambda x: x.mean() * 100)\
+            .unstack(level="特征")
+    elif dim == "knowledge":
+        assessment = answer_judgements\
+            .groupby(['voter_id', 'knowledge'])['judgement']\
+            .agg(lambda x: x.mean() * 100)\
+            .unstack(level="knowledge")
+    assessment.fillna(0, inplace=True)
+    assessment.to_csv(f"result/assessment-{dim}.csv")
     return assessment
 
 
@@ -171,5 +179,5 @@ def export_table_to_json(host, port, database,
 if __name__ == "__main__":
     student_answers = import_student_answer()
     question_answers = import_question_answers("QnA/")
-    assessment = assess_students(student_answers, question_answers)
+    assessment = assess_students(student_answers, question_answers, "knowledge")
     plot_clusters(assessment)
